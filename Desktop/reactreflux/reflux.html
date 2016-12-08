@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="reactjs/build/react.min.js"></script>
+    <script src="reactjs/build/react-dom.min.js"></script>
+    <script src="reactjs/build/react-reflux.js"></script>
+    <script src="http://static.runoob.com/assets/react/browser.min.js"></script>
+    <script src="http://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+    <style>
+        body{background:#eeeeee;}
+        .tabclass{ width:800px;margin: auto;background:white;}
+        .active {display: block;}
+        .hide{display: none;}
+        table{border-collapse:collapse;border:0px;}
+        td{border:1px solid;padding: 5px;width:110px;}
+        tr{padding: 5px;width:800px;}
+        .starttime{  border: solid 1px #ccc;  height: 35px;  width: 212px; padding-left: 5px;font-size: 15px;text-align: center;}
+        .star{color: red}
+        .mytd{  width:200px;border:0px;height: 68px;}
+        .in{width:450px;padding-left: 5px;}
+        .line{  width:100%;  height:2px;  background: cornflowerblue;margin-bottom: 5px;}
+        .words{font-size: 20px;color:darkcyan;}
+    </style>
+</head>
+<body>
+<div id="app"></div>
+<script type="text/babel">
+    var getAll=Reflux.createAction();
+    var TodoStore=Reflux.createStore({
+        items:[],
+        init:function(){
+            this.listenTo(getAll,'onGetAll');
+        },
+        onGetAll:function(data){
+            $.getJSON("http://photobazaar-testing-dev.camera360.com/manage/coupon/couponList?callback=?", "limit=10&page=data", function (response) {
+                console.log(response);
+                this.items.unshift(response.data.list);//因为push参数如果是一个数组的话，则当做一个元素push进去，所以下面在调用的时候要采用items【0】的方式
+                this.trigger(this.items[0]);//push 方法将以新元素出现的顺序添加这些元素。如果参数之一为数组，那么该数组将作为单个元素添加到数组中。如果要合并两个或多个数组中的元素，请使用 concat 方法。
+                console.log(this.items[0]);
+
+            }.bind(this));
+        }
+    });
+
+    var TodoComponent=React.createClass({
+        mixins: [Reflux.connect(TodoStore,'list')],//组件监听store第四种写法 Reflux.connect(store,'list')  数据自动更新到state指定的属性(list)上
+                                                   //组件上就不必写修改状态的方法了.但是store方法上修改数据后还是需要调用trigger的必传递最新数据
+        getInitialState:function(){
+            return {list:[],num:''}
+        },
+
+        onChangeText:function(ev){
+            //this.setState({text:ev.target.value});
+            //最新的refs获取标签不需要getDOMNode()了
+            this.setState({num:this.refs.reftext.value})
+        },
+        onGetAll:function(){
+            var data={num:this.state.text};
+            getAll(data);
+            this.setState({num:''})
+        },
+        getsTime:function (nS) {
+            var date = new Date(parseInt(nS)*1000);
+            var Y = date.getFullYear() + '-';
+            var M = (date.getMonth()+1 < 10 ? '0'+(date.getMonth()+1) : date.getMonth()+1) + '-';
+            var D = date.getDate() + ' ';
+            var h = date.getHours() + ':';
+            var m = date.getMinutes() + ':';
+            var s = date.getSeconds() +'0';
+            var day = Y + M + D + h + m +s;
+            return day;
+        }
+        ,
+
+
+        render:function(){
+            return (
+                    <div>
+                        <input type="text" value={this.state.num} onChange={this.onChangeText}  ref="reftext" />
+                        <button onClick={this.onGetAll}>查询</button>
+                        <table>
+                            <tr>
+                                <td>内容</td>
+                                <td>类型</td>
+                                <td>优惠金额/折扣</td>
+                                <td>状态</td>
+                                <td>满减限制</td>
+                                <td>开始时间</td>
+                                <td>结束时间</td>
+                                <td>场景</td>
+                            </tr>
+                            {
+                                this.state.list.map(function (item,index) {
+                                    return <tr><td>{item.desc}</td>
+                                        <td>{item.type==1?"折扣":"优惠券"}</td>
+                                        <td>{item.amount}</td>
+                                        <td>{item.status==1?"可用":"不可用"}</td>
+                                        <td>{item.stint==0?"无限制":"优惠券"}</td>
+                                        <td>{this.getsTime(item.startTime)}</td>
+                                        <td>{this.getsTime(item.endTime)}</td>
+                                        <td>{item.scene==0?"所有场景":"优惠券"}</td>
+                                    </tr>
+
+                                }.bind(this))
+                            }
+                        </table>
+                        </div>
+            );
+        }
+    });
+
+    ReactDOM.render(<TodoComponent />,document.getElementById('app'));
+</script>
+</body>
+</html>
